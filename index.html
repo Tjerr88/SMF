@@ -1,0 +1,1677 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Steel Mace Flow Generator (Manual-Accurate L1+L2)</title>
+  <style>
+    :root{
+      --bg:#0b0f14; --card:#111827; --muted:#94a3b8; --text:#e5e7eb; --line:#243244;
+      --accent:#60a5fa; --good:#34d399; --warn:#fbbf24; --bad:#fb7185;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --r:16px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: radial-gradient(1200px 600px at 20% -10%, rgba(96,165,250,.20), transparent 55%),
+                  radial-gradient(1000px 600px at 90% 0%, rgba(52,211,153,.12), transparent 55%),
+                  var(--bg);
+      color:var(--text);
+    }
+    .wrap{max-width:980px; margin:0 auto; padding:16px;}
+    header{
+      display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;
+      margin-bottom:12px;
+    }
+    .title{display:flex; flex-direction:column; gap:2px;}
+    .title h1{font-size:18px; margin:0; letter-spacing:.2px;}
+    .title p{margin:0; color:var(--muted); font-size:12px; line-height:1.35}
+    .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+      border:1px solid rgba(255,255,255,.06);
+      border-radius: var(--r);
+      box-shadow: var(--shadow);
+      padding:12px;
+    }
+    .grid{
+      display:grid; grid-template-columns: 1fr; gap:10px;
+    }
+    @media(min-width:880px){
+      .grid{grid-template-columns: 360px 1fr;}
+    }
+    label{font-size:12px; color:var(--muted); display:block; margin-bottom:6px;}
+    select{
+      width:100%; padding:10px 12px; border-radius:12px;
+      border:1px solid rgba(255,255,255,.08);
+      background: rgba(0,0,0,.20);
+      color:var(--text); outline:none;
+    }
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:8px 10px; border-radius:999px;
+      border:1px solid rgba(255,255,255,.08);
+      background: rgba(0,0,0,.18);
+      color:var(--muted); font-size:12px;
+    }
+    .toggle{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:10px; padding:10px 12px; border-radius:12px;
+      border:1px solid rgba(255,255,255,.06);
+      background: rgba(0,0,0,.16);
+    }
+    .toggle span{font-size:12px; color:var(--muted)}
+    .toggle input{transform:scale(1.2)}
+    .btns{display:flex; gap:10px; flex-wrap:wrap;}
+    button{
+      padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.10);
+      background: rgba(96,165,250,.18); color:var(--text);
+      font-weight:700; letter-spacing:.2px;
+      cursor:pointer;
+    }
+    button.secondary{background: rgba(255,255,255,.06)}
+    button.danger{background: rgba(251,113,133,.18)}
+    button:active{transform: translateY(1px)}
+    details{border-radius:12px; border:1px solid rgba(255,255,255,.06); overflow:hidden;}
+    summary{
+      cursor:pointer; padding:10px 12px; list-style:none;
+      background: rgba(0,0,0,.16);
+      font-weight:700; font-size:13px;
+    }
+    summary::-webkit-details-marker{display:none}
+    .detailsBody{padding:10px 12px; color:var(--muted); font-size:12px; line-height:1.5}
+    .sectionTitle{font-size:13px; font-weight:800; margin:0 0 8px 0}
+    .hr{height:1px; background:rgba(255,255,255,.06); margin:10px 0}
+    .sessionTitle{display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:space-between;}
+    .badge{font-size:12px; color:var(--text); border:1px solid rgba(255,255,255,.10); padding:6px 10px; border-radius:999px; background:rgba(0,0,0,.18)}
+    .list{display:flex; flex-direction:column; gap:8px; margin-top:10px;}
+    .item{
+      padding:10px 12px; border-radius:14px;
+      border:1px solid rgba(255,255,255,.06);
+      background: rgba(0,0,0,.14);
+    }
+    .itemTop{display:flex; justify-content:space-between; gap:10px; align-items:flex-start;}
+    .itemName{font-weight:800; font-size:13px; color:var(--text);}
+    .meta{font-size:12px; color:var(--muted); margin-top:4px; line-height:1.35}
+    .small{font-size:12px; color:var(--muted)}
+    .timerBox{
+      display:flex; flex-direction:column; gap:10px;
+      padding:12px; border-radius:16px;
+      border:1px solid rgba(255,255,255,.08);
+      background: rgba(0,0,0,.18);
+    }
+    .timeBig{
+      font-variant-numeric: tabular-nums;
+      font-size:44px; font-weight:900; letter-spacing:1px;
+      text-align:center;
+    }
+    .stepLine{
+      display:flex; gap:10px; justify-content:space-between; align-items:center; flex-wrap:wrap;
+      color:var(--muted); font-size:12px;
+    }
+    .progress{
+      height:8px; border-radius:999px; overflow:hidden;
+      background: rgba(255,255,255,.06);
+    }
+    .bar{height:100%; width:0%; background: rgba(52,211,153,.55)}
+    .hint{font-size:12px; color:var(--muted); line-height:1.45}
+    .ok{color:var(--good)}
+    .warn{color:var(--warn)}
+    .bad{color:var(--bad)}
+    .footer{margin-top:10px; text-align:center; color:var(--muted); font-size:12px;}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="title">
+        <h1>Steel Mace Flow Generator</h1>
+        <p>
+          Manual-accurate: Level 1 Flow Builder + Level 2 Creative Homework / Drills<br/>
+          Mobiel-first • Wakelock • Timer + beep • Persist on refresh
+        </p>
+      </div>
+      <div class="row">
+        <div class="pill" id="wakePill">Wakelock: <strong id="wakeStatus">uit</strong></div>
+        <div class="pill">Session: <strong id="sessionStamp">—</strong></div>
+      </div>
+    </header>
+
+    <div class="grid">
+      <div class="card">
+        <p class="sectionTitle">Generator</p>
+
+        <label for="mode">Mode</label>
+        <select id="mode">
+          <option value="L1">Level 1 — Flow Builder (2:00 per move + 5:00 ladder 4→1)</option>
+          <option value="L2">Level 2 — Creative Homework (module constraints)</option>
+          <option value="DRILL">Level 2 — Drills (100 alternating reps / 5-min free flow)</option>
+        </select>
+
+        <div class="hr"></div>
+
+        <label for="l1_moves">L1: aantal moves (oneven)</label>
+        <select id="l1_moves">
+          <option>3</option>
+          <option selected>5</option>
+          <option>7</option>
+          <option>9</option>
+        </select>
+
+        <label for="l1_family" style="margin-top:10px;">L1: move family (exact names)</label>
+        <select id="l1_family">
+          <option value="MIX" selected>Mix (alle Level 1 moves)</option>
+          <option value="PRESS">Presses (Level 1)</option>
+          <option value="CURLS">Curls (Ballistic/Switch)</option>
+          <option value="ARROWS">Arrows</option>
+          <option value="UPPERCUTS">Uppercuts</option>
+          <option value="COMBOS">Combos met Steps (zoals in manual)</option>
+          <option value="360">360</option>
+        </select>
+
+        <label for="l2_module" style="margin-top:10px;">L2: module</label>
+        <select id="l2_module">
+          <option value="HEALING" selected>Mace Mobility — Healing Flow (standing + ground)</option>
+          <option value="BATTLE">Battle Steps — Free Flow (standing + ground)</option>
+          <option value="SWORDS">Swords & Shields — Creative / Landmarks</option>
+          <option value="KIMURA">Kimura & Shaolin — Move Arsenal</option>
+          <option value="FLOWVAULT">Flow Vault (journaling)</option>
+          <option value="360HW">360 Creative Homework</option>
+        </select>
+
+        <label for="l2_minutes" style="margin-top:10px;">L2: flow timer (minuten)</label>
+        <select id="l2_minutes">
+          <option value="2">2</option>
+          <option value="3" selected>3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+        </select>
+
+        <div class="hr"></div>
+
+        <div class="toggle">
+          <span>Alternating sides (R/L/R/L…)</span>
+          <input id="altSides" type="checkbox" checked />
+        </div>
+        <div class="toggle" style="margin-top:10px;">
+          <span>Include ground moves (L2 modules waar van toepassing)</span>
+          <input id="includeGround" type="checkbox" checked />
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="toggle">
+          <span>Beep bij overgangen</span>
+          <input id="beepOn" type="checkbox" checked />
+        </div>
+        <div class="toggle" style="margin-top:10px;">
+          <span>Wakelock (scherm aan)</span>
+          <input id="wakeOn" type="checkbox" />
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="btns">
+          <button id="btnNew">Nieuwe sessie</button>
+          <button class="secondary" id="btnRepeat">Zelfde sessie</button>
+          <button class="danger" id="btnClear">Reset</button>
+        </div>
+
+        <div class="hr"></div>
+
+        <details>
+          <summary>Regels (exact uit manuals, kort)</summary>
+          <div class="detailsBody">
+            <div class="hint">
+              <div><strong>Level 1 Flow Builder</strong>: oneven aantal moves (3/5/7/9). Eerst <strong>2:00 AMRAP per move</strong>, daarna <strong>4 blokken van 5:00</strong> met <strong>4/3/2/1 reps per move</strong> en <strong>1:00 rust</strong> tussen de blokken.</div>
+              <div style="margin-top:8px;"><strong>Level 2 Creative Homework</strong>: vaak <strong>5 move minimum</strong>, <strong>alternating sides</strong>, <strong>2 minute minimum</strong>, en sommige modules vereisen <strong>standing + ground</strong> en “to ground and back up”.</div>
+              <div style="margin-top:8px;">Deze generator kiest uitsluitend uit move-namen en opdrachten die letterlijk in de manuals staan (geen eigen move-inventie).</div>
+            </div>
+          </div>
+        </details>
+      </div>
+
+      <div class="card">
+        <div class="sessionTitle">
+          <p class="sectionTitle" style="margin:0;">Sessie</p>
+          <span class="badge" id="modeBadge">—</span>
+        </div>
+
+        <div class="timerBox" style="margin-top:10px;">
+          <div class="timeBig" id="timeBig">00:00</div>
+          <div class="progress"><div class="bar" id="bar"></div></div>
+          <div class="stepLine">
+            <div>Stap: <strong id="stepName">—</strong></div>
+            <div><span id="stepIndex">0</span>/<span id="stepTotal">0</span></div>
+          </div>
+          <div class="btns" style="justify-content:center;">
+            <button id="tStart">Start</button>
+            <button class="secondary" id="tPause">Pauze</button>
+            <button class="secondary" id="tNext">Volgende</button>
+            <button class="secondary" id="tReset">Reset timer</button>
+          </div>
+          <div class="hint" id="timerHint">Genereer een sessie en druk Start.</div>
+        </div>
+
+        <div class="hr"></div>
+
+        <div id="sessionSummary" class="small">—</div>
+        <div class="list" id="movesList"></div>
+
+        <div class="footer">
+          Sessies worden lokaal opgeslagen (localStorage). Refresh = dezelfde sessie terug.
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const LS_KEY = "SMF_FLOWGEN_SESSION_V2_MANUAL";
+  const LS_TIMER = "SMF_FLOWGEN_TIMER_V2_MANUAL";
+
+  const $ = (id) => document.getElementById(id);
+
+// Safe getters (some Android WebViews can transiently return null for elements)
+function getEl(id){ return $(id); }
+function getVal(id, fallback=""){
+  const el = getEl(id);
+  if(!el) return fallback;
+  return ("value" in el) ? el.value : fallback;
+}
+function getChecked(id, fallback=false){
+  const el = getEl(id);
+  if(!el) return fallback;
+  return !!el.checked;
+}
+function setText(id, txt){
+  const el = getEl(id);
+  if(el) el.textContent = txt;
+}
+function setHTML(id, html){
+  const el = getEl(id);
+  if(el) el.innerHTML = html;
+}
+  const nowStamp = () => new Date().toISOString().slice(0,19).replace("T"," ");
+  const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+  const pad2 = (n) => String(n).padStart(2,"0");
+  const mmss = (sec) => `${pad2(Math.floor(sec/60))}:${pad2(sec%60)}`;
+
+  // Beep (WebAudio)
+  let audioCtx = null;
+  function beep(freq=880, dur=0.08, vol=0.05){
+    if (!$("#beepOn").checked) return;
+    try{
+      if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = "sine";
+      o.frequency.value = freq;
+      g.gain.value = vol;
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start();
+      setTimeout(()=>{ o.stop(); }, dur*1000);
+    }catch(e){}
+  }
+  function beepTriple(){
+    beep(880, .06); setTimeout(()=>beep(660,.06),90); setTimeout(()=>beep(990,.06),180);
+  }
+
+  // Wakelock
+  let wakeLock = null;
+  async function setWakelock(on){
+    if(!("wakeLock" in navigator)){
+      $("#wakeStatus").textContent = "niet ondersteund";
+      $("#wakeOn").checked = false;
+      return;
+    }
+    try{
+      if(on){
+        wakeLock = await navigator.wakeLock.request("screen");
+        $("#wakeStatus").textContent = "aan";
+        wakeLock.addEventListener("release", () => {
+          $("#wakeStatus").textContent = "uit";
+          $("#wakeOn").checked = false;
+        });
+      }else{
+        if(wakeLock){ await wakeLock.release(); wakeLock = null; }
+        $("#wakeStatus").textContent = "uit";
+      }
+    }catch(e){
+      $("#wakeStatus").textContent = "uit";
+      $("#wakeOn").checked = false;
+    }
+  }
+  // Cache wake checkbox if present (some embeds/templates may omit it)
+  const wakeEl = $("#wakeOn");
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && wakeEl && wakeEl.checked) {
+      setWakelock(true);
+    }
+  });
+
+  if (wakeEl) {
+    wakeEl.addEventListener("change", (e) => setWakelock(e.target.checked));
+  } else {
+    console.warn("[SMF] Missing #wakeOn checkbox in DOM; wakelock toggle disabled.");
+  }
+
+  // ===========
+  // MOVE DATABASE
+  // ===========
+  // NOTE: Names/assignments below are taken verbatim from the provided SMF Level 1 + Level 2 student manuals.
+  // The generator does NOT invent new movement names; it only selects from these manual-defined items.
+
+  // Level 1 (Moves + named combos in the manual)
+  const L1_MOVES = [
+  {
+    "name": "“With Honors” Homework Requirement",
+    "family": "MISC"
+  },
+  {
+    "name": "Bowing In (Savage Pick-up)",
+    "family": "FOUNDATIONS"
+  },
+  {
+    "name": "Warrior Stance",
+    "family": "FOUNDATIONS"
+  },
+  {
+    "name": "Landmark 1",
+    "family": "FOUNDATIONS"
+  },
+  {
+    "name": "Landmark 2",
+    "family": "FOUNDATIONS"
+  },
+  {
+    "name": "Landmark 3",
+    "family": "FOUNDATIONS"
+  },
+  {
+    "name": "Landmark 4",
+    "family": "FOUNDATIONS"
+  },
+  {
+    "name": "Landmark 1; Rotated",
+    "family": "FOUNDATIONS"
+  },
+  {
+    "name": "Landmark 2, Rotated",
+    "family": "FOUNDATIONS"
+  },
+  {
+    "name": "Landmark 3, Sideload",
+    "family": "FOUNDATIONS"
+  },
+  {
+    "name": "Landmark 4, Rotated",
+    "family": "FOUNDATIONS"
+  },
+  {
+    "name": "Crossbody Bottom to Crossbody Top Switches",
+    "family": "TRANSITIONS"
+  },
+  {
+    "name": "Short Stab Transition",
+    "family": "TRANSITIONS"
+  },
+  {
+    "name": "Long Stab Transition",
+    "family": "TRANSITIONS"
+  },
+  {
+    "name": "Ballistic Curls",
+    "family": "CURLS"
+  },
+  {
+    "name": "Rotated Ballistic Curls",
+    "family": "CURLS"
+  },
+  {
+    "name": "Sword Draw Switch",
+    "family": "TRANSITIONS"
+  },
+  {
+    "name": "Rotated 3 to 3 Switch",
+    "family": "MISC"
+  },
+  {
+    "name": "Overhead Press",
+    "family": "PRESS"
+  },
+  {
+    "name": "Rotated Press",
+    "family": "PRESS"
+  },
+  {
+    "name": "Extended Press",
+    "family": "PRESS"
+  },
+  {
+    "name": "A-Frame Elevators",
+    "family": "PRESS"
+  },
+  {
+    "name": "Dragon Punch Press",
+    "family": "PRESS"
+  },
+  {
+    "name": "Wrecking Ball Press",
+    "family": "PRESS"
+  },
+  {
+    "name": "Switch Squats",
+    "family": "CURLS"
+  },
+  {
+    "name": "Step 1 Ballistic Curls",
+    "family": "CURLS"
+  },
+  {
+    "name": "Step 2 Ballistic Curls",
+    "family": "CURLS"
+  },
+  {
+    "name": "Step 3 Ballistic Curls",
+    "family": "CURLS"
+  },
+  {
+    "name": "Step 4 Ballistic Curls",
+    "family": "CURLS"
+  },
+  {
+    "name": "4 Step Flow, with Ballistic Curls",
+    "family": "CURLS"
+  },
+  {
+    "name": "Cross Body Switches",
+    "family": "TRANSITIONS"
+  },
+  {
+    "name": "Prayer Squats",
+    "family": "MISC"
+  },
+  {
+    "name": "Step 1 Switch Curls",
+    "family": "CURLS"
+  },
+  {
+    "name": "Step 2 Switch Curls",
+    "family": "CURLS"
+  },
+  {
+    "name": "Step 3 Switch Curls",
+    "family": "CURLS"
+  },
+  {
+    "name": "Step 4 Switch Curls",
+    "family": "CURLS"
+  },
+  {
+    "name": "Bow and Arrow, Standing Structure",
+    "family": "ARROWS"
+  },
+  {
+    "name": "Bow and Arrow Squat",
+    "family": "ARROWS"
+  },
+  {
+    "name": "Step 1 Bow and Arrow",
+    "family": "ARROWS"
+  },
+  {
+    "name": "Step 2 Bow and Arrow",
+    "family": "ARROWS"
+  },
+  {
+    "name": "Step 3 Bow and Arrow",
+    "family": "ARROWS"
+  },
+  {
+    "name": "Step 4 Bow and Arrow",
+    "family": "ARROWS"
+  },
+  {
+    "name": "Uppercuts",
+    "family": "UPPERCUTS"
+  },
+  {
+    "name": "Step 1 Uppercut",
+    "family": "UPPERCUTS"
+  },
+  {
+    "name": "Step 2 Uppercut",
+    "family": "UPPERCUTS"
+  },
+  {
+    "name": "Step 3 Uppercut",
+    "family": "UPPERCUTS"
+  },
+  {
+    "name": "Step 4 Uppercut",
+    "family": "UPPERCUTS"
+  },
+  {
+    "name": "Hunter/Huntress Uppercut",
+    "family": "UPPERCUTS"
+  },
+  {
+    "name": "Dragon Uppercut",
+    "family": "UPPERCUTS"
+  },
+  {
+    "name": "Infinity Uppercut",
+    "family": "UPPERCUTS"
+  },
+  {
+    "name": "Power Uppercut",
+    "family": "UPPERCUTS"
+  },
+  {
+    "name": "Saddlebag Uppercuts",
+    "family": "UPPERCUTS"
+  },
+  {
+    "name": "360 Swing",
+    "family": "360"
+  },
+  {
+    "name": "360 Swing, Squat",
+    "family": "360"
+  },
+  {
+    "name": "360 Swing, Step 1",
+    "family": "360"
+  },
+  {
+    "name": "360 Swing, Step 2",
+    "family": "360"
+  },
+  {
+    "name": "360 Swing, Step 3",
+    "family": "360"
+  },
+  {
+    "name": "360 Swing, Step 4",
+    "family": "360"
+  },
+  {
+    "name": "10 and 2 Swing",
+    "family": "360"
+  },
+  {
+    "name": "Negative Swing",
+    "family": "360"
+  },
+  {
+    "name": "Switch March Flow",
+    "family": "FLOWS"
+  },
+  {
+    "name": "Warrior Walk Flow",
+    "family": "FLOWS"
+  },
+  {
+    "name": "3 Step Flow",
+    "family": "FLOWS"
+  },
+  {
+    "name": "Diamond Flow",
+    "family": "FLOWS"
+  },
+  {
+    "name": "Power Archer Flow",
+    "family": "ARROWS"
+  },
+  {
+    "name": "Tree King Flow",
+    "family": "FLOWS"
+  },
+  {
+    "name": "Knight Shield Flow",
+    "family": "FLOWS"
+  },
+  {
+    "name": "Rising Flow",
+    "family": "FLOWS"
+  }
+];
+
+  // Level 2: Mace Mobility (move names shown in the manual section)
+  const L2_MOBILITY = [
+  {
+    "name": "Warrior Stance",
+    "tag": [
+      "HEALING"
+    ]
+  },
+  {
+    "name": "Hip tucks Front/Back",
+    "tag": [
+      "HEALING"
+    ]
+  },
+  {
+    "name": "Hip tuck Side/Side",
+    "tag": [
+      "HEALING"
+    ]
+  },
+  {
+    "name": "Hip Circles",
+    "tag": [
+      "HEALING"
+    ]
+  },
+  {
+    "name": "Lateral Sits",
+    "tag": [
+      "HEALING",
+      "GROUND"
+    ]
+  },
+  {
+    "name": "Ballistic Fighter",
+    "tag": [
+      "HEALING"
+    ]
+  },
+  {
+    "name": "Rotated Landmark 2",
+    "tag": [
+      "HEALING"
+    ]
+  },
+  {
+    "name": "Prayer Switch Rotate to other side",
+    "tag": [
+      "HEALING"
+    ]
+  },
+  {
+    "name": "Reverse Arrow",
+    "tag": [
+      "HEALING"
+    ]
+  },
+  {
+    "name": "Horizon Swing",
+    "tag": [
+      "HEALING"
+    ]
+  },
+  {
+    "name": "Channel Inner Sword Swing",
+    "tag": [
+      "HEALING"
+    ]
+  },
+  {
+    "name": "Big Heart, Strong Back (Flexion/Extension)",
+    "tag": [
+      "HEALING"
+    ]
+  },
+  {
+    "name": "Lateral Glides",
+    "tag": [
+      "HEALING"
+    ]
+  },
+  {
+    "name": "Thoracic Circles",
+    "tag": [
+      "HEALING"
+    ]
+  },
+  {
+    "name": "Neck Glides Front/back",
+    "tag": [
+      "HEALING"
+    ]
+  },
+  {
+    "name": "Neck Glides Side/ Side",
+    "tag": [
+      "HEALING"
+    ]
+  },
+  {
+    "name": "Neck Circles from Heart Center Prayer Stance",
+    "tag": [
+      "HEALING"
+    ]
+  },
+  {
+    "name": "Elbow Rolls",
+    "tag": [
+      "HEALING"
+    ]
+  },
+  {
+    "name": "Side Switch Flow",
+    "tag": [
+      "HEALING"
+    ]
+  },
+  {
+    "name": "Cross Fighter Flow",
+    "tag": [
+      "HEALING"
+    ]
+  },
+  {
+    "name": "SHINBOX DRAGON TAIL SHINBOX",
+    "tag": [
+      "HEALING",
+      "GROUND"
+    ]
+  },
+  {
+    "name": "SUN CIRCLES",
+    "tag": [
+      "HEALING"
+    ]
+  }
+];
+
+  // Level 2: Battle Steps terms & homework elements shown in manual
+  const L2_BATTLE = [
+  {
+    "name": "BATTLE STEPS TALL ACTIVE — Front/45/90/inside 45",
+    "tag": [
+      "BATTLE"
+    ]
+  },
+  {
+    "name": "SOFT STEP — Front",
+    "tag": [
+      "BATTLE"
+    ]
+  },
+  {
+    "name": "SOFT STEP — Cross Front Step",
+    "tag": [
+      "BATTLE"
+    ]
+  },
+  {
+    "name": "SOFT STEP — Outside 45°",
+    "tag": [
+      "BATTLE"
+    ]
+  },
+  {
+    "name": "SOFT STEP — 90°",
+    "tag": [
+      "BATTLE"
+    ]
+  },
+  {
+    "name": "TALL ACTIVE W/ STEPS 1-3",
+    "tag": [
+      "BATTLE"
+    ]
+  },
+  {
+    "name": "LATERAL LUNGE",
+    "tag": [
+      "BATTLE"
+    ]
+  },
+  {
+    "name": "DRAGON STEP 4",
+    "tag": [
+      "BATTLE"
+    ]
+  },
+  {
+    "name": "ADDING TALL ACTIVE TO FLOW FOUNDATION — STEP 1",
+    "tag": [
+      "BATTLE"
+    ]
+  },
+  {
+    "name": "ADDING TALL ACTIVE TO FLOW FOUNDATION — STEP 2",
+    "tag": [
+      "BATTLE"
+    ]
+  },
+  {
+    "name": "MACE ANIMAL - STEP 1",
+    "tag": [
+      "BATTLE"
+    ]
+  },
+  {
+    "name": "MACE ANIMAL - STEP 2",
+    "tag": [
+      "BATTLE"
+    ]
+  },
+  {
+    "name": "MACE ANIMAL - STEP 3",
+    "tag": [
+      "BATTLE"
+    ]
+  },
+  {
+    "name": "MACE ANIMAL - STEP 4",
+    "tag": [
+      "BATTLE"
+    ]
+  }
+];
+
+  // Level 2: Swords & Shields landmark/drill names (as displayed)
+  const L2_SWORDS = [
+  {
+    "name": "MID GUARD (SHIELD POSTURE)",
+    "tag": [
+      "SWORDS"
+    ]
+  },
+  {
+    "name": "HIGH GUARD",
+    "tag": [
+      "SWORDS"
+    ]
+  },
+  {
+    "name": "CROSS BLOCK",
+    "tag": [
+      "SWORDS"
+    ]
+  },
+  {
+    "name": "CROSS GUARD (Teaches Guide)",
+    "tag": [
+      "SWORDS"
+    ]
+  },
+  {
+    "name": "SIDE GUARD BOTTOMS UP",
+    "tag": [
+      "SWORDS"
+    ]
+  },
+  {
+    "name": "SIDE GUARD BOTTOMS UP (45 DEGREES)",
+    "tag": [
+      "SWORDS"
+    ]
+  },
+  {
+    "name": "BOTTOM PUNCH",
+    "tag": [
+      "SWORDS"
+    ]
+  },
+  {
+    "name": "BOTTOM BLOCK",
+    "tag": [
+      "SWORDS"
+    ]
+  },
+  {
+    "name": "SINGLE HAND CROSS BODY BOTTOM",
+    "tag": [
+      "SWORDS"
+    ]
+  },
+  {
+    "name": "SWORDS IN ROTATION",
+    "tag": [
+      "SWORDS"
+    ]
+  },
+  {
+    "name": "Back Block",
+    "tag": [
+      "SWORDS"
+    ]
+  },
+  {
+    "name": "Cross Blade",
+    "tag": [
+      "SWORDS"
+    ]
+  },
+  {
+    "name": "Cross Body Bottom Back",
+    "tag": [
+      "SWORDS"
+    ]
+  },
+  {
+    "name": "Side Cross Body add Rotation",
+    "tag": [
+      "SWORDS"
+    ]
+  },
+  {
+    "name": "Bottoms Up",
+    "tag": [
+      "SWORDS"
+    ]
+  },
+  {
+    "name": "Cross Body Bottom",
+    "tag": [
+      "SWORDS"
+    ]
+  },
+  {
+    "name": "Single Bottom Block",
+    "tag": [
+      "SWORDS"
+    ]
+  }
+];
+
+  // Level 2: Kimura & Shaolin + Move Arsenal items
+  const L2_KIMURA = [
+  {
+    "name": "KIMURA GRIP",
+    "tag": [
+      "KIMURA"
+    ]
+  },
+  {
+    "name": "ROTATED KIMURA GRIP",
+    "tag": [
+      "KIMURA"
+    ]
+  },
+  {
+    "name": "CLOSED FIST SHAOLIN",
+    "tag": [
+      "KIMURA"
+    ]
+  },
+  {
+    "name": "SHAOLIN ZERO",
+    "tag": [
+      "KIMURA"
+    ]
+  },
+  {
+    "name": "Reverse Diamond Switch",
+    "tag": [
+      "KIMURA"
+    ]
+  },
+  {
+    "name": "Shaolin Wrist Control",
+    "tag": [
+      "KIMURA"
+    ]
+  },
+  {
+    "name": "SUN SHAOLIN",
+    "tag": [
+      "KIMURA"
+    ]
+  },
+  {
+    "name": "BLOOD OATH",
+    "tag": [
+      "KIMURA"
+    ]
+  },
+  {
+    "name": "DROP IN SWINGS",
+    "tag": [
+      "KIMURA"
+    ]
+  },
+  {
+    "name": "SWORD CRADLE",
+    "tag": [
+      "KIMURA"
+    ]
+  },
+  {
+    "name": "SUN CRADLE",
+    "tag": [
+      "KIMURA"
+    ]
+  },
+  {
+    "name": "EXECUTIONER CRADLE",
+    "tag": [
+      "KIMURA"
+    ]
+  },
+  {
+    "name": "ADVANCED SWINGS",
+    "tag": [
+      "KIMURA"
+    ]
+  },
+  {
+    "name": "MILLS",
+    "tag": [
+      "KIMURA"
+    ]
+  },
+  {
+    "name": "LOD SWINGS",
+    "tag": [
+      "KIMURA"
+    ]
+  },
+  {
+    "name": "SWORD SWING",
+    "tag": [
+      "KIMURA"
+    ]
+  },
+  {
+    "name": "BATTLE STANCE",
+    "tag": [
+      "KIMURA"
+    ]
+  },
+  {
+    "name": "Back Rack",
+    "tag": [
+      "KIMURA"
+    ]
+  }
+];
+
+  // Level 2: Drills / Homework (verbatim tasks)
+  const L2_DRILLS = [
+  {
+    "name": "Homework: 2-minute Alternating Steps for each type of Tall Active: Front/45/90/inside 45(rip floor apart)",
+    "kind": "FLOW"
+  },
+  {
+    "name": "Homework: 2 Minute Alt of each steps: Front, Cross Front Step, outside 45, 90",
+    "kind": "FLOW"
+  },
+  {
+    "name": "Homework: 5 Minutes Alternating Tall Active Steps 1-3",
+    "kind": "FLOW"
+  },
+  {
+    "name": "Homework: 5 Minute Round alt R/L (Lateral Lunge)",
+    "kind": "FLOW"
+  },
+  {
+    "name": "Homework: 2 minutes Alt F Dragon/CF Dragon",
+    "kind": "FLOW"
+  },
+  {
+    "name": "Homework: 100 alternating reps — MID GUARD (SHIELD POSTURE)",
+    "kind": "REPS"
+  },
+  {
+    "name": "Homework: 100 alternating reps — HIGH GUARD",
+    "kind": "REPS"
+  },
+  {
+    "name": "Homework: 100 Alternating Reps — CROSS BLOCK",
+    "kind": "REPS"
+  },
+  {
+    "name": "Homework: 100 Alternating Reps — CROSS GUARD (Teaches Guide)",
+    "kind": "REPS"
+  },
+  {
+    "name": "Homework: 100 Alternating Reps — SIDE GUARD BOTTOMS UP",
+    "kind": "REPS"
+  },
+  {
+    "name": "Homework: 100 alternating Reps — BOTTOM PUNCH",
+    "kind": "REPS"
+  },
+  {
+    "name": "Homework: 100 Alternating Reps — BOTTOM BLOCK",
+    "kind": "REPS"
+  },
+  {
+    "name": "Homework: 100 Alternating Reps — SINGLE HAND CROSS BODY BOTTOM",
+    "kind": "REPS"
+  },
+  {
+    "name": "Homework: 100 Alternating Reps — KIMURA GRIP",
+    "kind": "REPS"
+  },
+  {
+    "name": "Homework: 100 Alternating Reps — ROTATED KIMURA GRIP",
+    "kind": "REPS"
+  },
+  {
+    "name": "Homework: 5 Minutes of Free Flow w/ Shaolin Zero",
+    "kind": "FLOW"
+  }
+];
+
+  const L2_FLOWVAULT_FLOWS = [
+  "RYU DANSU FLOW",
+  "CRESCENT FLOW",
+  "BLADE DANCE FLOW",
+  "WATERFALL FLOW",
+  "WATERFALL 2.0",
+  "HIDDEN WATERFALL",
+  "REVERSE WATERFALL FLOW",
+  "RISING FLOW",
+  "PIVOT UPPERCUT",
+  "RONIN BLADE FLOW",
+  "BATTLE STANCE FLOW",
+  "CRADLE JOUST FLOW",
+  "GYPSY FLOW",
+  "KUNAI FLOW",
+  "ROWAN FLOW",
+  "SHAOLIN GYPSY WHIP"
+];
+  const L2_MASTERCLASS_ITEMS = [
+  "War Dance (Live test out)",
+  "MASTER CLASS FLOW (create your own MCF)"
+];
+
+
+  const FLOWVAULT_PROMPTS = [
+  "JOURNAL THE EXPERIENCE",
+  "Take 5-10 minutes after each flow to journal a short paragraph about it.",
+  "Questions: fatigue? energy? like/dislike and why? emotions? memories/sensations?"
+];
+
+  // ---------- Random ----------
+  function shuffle(arr){
+    const a = arr.slice();
+    for(let i=a.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i],a[j]]=[a[j],a[i]];
+    }
+    return a;
+  }
+
+  function normalizeSides(names){
+    if(!getChecked("altSides", true)) return names.map(n => ({name:n, side:"R"}));
+    let side = "R";
+    return names.map(n => {
+      const out = {name:n, side};
+      side = (side==="R") ? "L" : "R";
+      return out;
+    });
+  }
+
+  function pickL1(count){
+    const fam = getVal("l1_family","MIX");
+    let pool = L1_MOVES.filter(m => m.family !== "TRANSITIONS"); // transitions are implicit; user can still include via MIX if desired later
+    if(fam !== "MIX"){
+      pool = pool.filter(m => m.family === fam);
+    }
+    // If user chose MIX, allow everything incl transitions
+    if(fam === "MIX"){
+      pool = L1_MOVES.slice();
+    }
+    const picks = shuffle(pool).slice(0, Math.min(count, pool.length)).map(x => x.name);
+    return normalizeSides(picks);
+  }
+
+  function pickL2(module){
+    const includeGround = getChecked("includeGround", true);
+    let pool = [];
+    if(module === "HEALING") pool = L2_MOBILITY.slice();
+    if(module === "BATTLE") pool = L2_BATTLE.slice();
+    if(module === "SWORDS") pool = L2_SWORDS.slice();
+    if(module === "KIMURA") pool = L2_KIMURA.slice();
+    if(module === "FLOWVAULT") {
+      // FlowVault: choose from Flow Vault flow list first; fallback to general L2 moves.
+      const fv = L2_FLOWVAULT_FLOWS.map(n => ({name:n, tag:["FLOWVAULT"]}));
+      pool = fv.concat([].concat(L2_MOBILITY, L2_BATTLE, L2_SWORDS, L2_KIMURA));
+    }
+    if(module === "360HW"){
+      // 360 Creative Homework (Move Arsenal) — steps from manual
+      pool = [
+        {name:"360 w/ Tall Active", tag:["360HW"]},
+        {name:"360 w/ Sun Shaolin", tag:["360HW"]},
+        {name:"360 w/ Shaolin Wrist Control", tag:["360HW"]},
+        {name:"JOURNAL THE EXPERIENCE", tag:["360HW"]},
+        {name:"SWORD CRADLE", tag:["360HW"]},
+        {name:"SUN CRADLE", tag:["360HW"]},
+        {name:"MILLS", tag:["360HW"]},
+        {name:"LOD SWINGS", tag:["360HW"]},
+        {name:"SWORD SWING", tag:["360HW"]},
+        {name:"ADVANCED SWINGS", tag:["360HW"]},
+      ];
+    }
+
+    if(!includeGround){
+      pool = pool.filter(m => !(m.tag||[]).includes("GROUND"));
+    }
+
+    // Many L2 creative homework items require minimum 5 moves.
+    const minMoves = 5;
+    let picks = shuffle(pool).slice(0, Math.min(minMoves, pool.length)).map(x => x.name);
+
+    // If Healing/Battle and includeGround is ON, ensure we include at least one ground item if available
+    if(includeGround && (module==="HEALING" || module==="BATTLE" || module==="FLOWVAULT")){
+      const groundPool = pool.filter(m => (m.tag||[]).includes("GROUND")).map(x=>x.name);
+      if(groundPool.length){
+        const hasGround = picks.some(n => groundPool.includes(n));
+        if(!hasGround){
+          picks[picks.length-1] = shuffle(groundPool)[0];
+        }
+      }
+    }
+
+    return normalizeSides(picks);
+  }
+
+  function pickDrill(){
+    const d = shuffle(L2_DRILLS)[0];
+    return d;
+  }
+
+  // ---------- Protocols ----------
+  function buildProtocol(mode, module, movesOrDrill){
+    if(mode === "L1"){
+      const moves = movesOrDrill; // [{name, side}]
+      const steps = [];
+      // 2:00 AMRAP per move
+      moves.forEach(m => steps.push({
+        name:`AMRAP 2:00 — ${m.name} (${m.side})`,
+        seconds:120
+      }));
+      // Builder ladder: 4 blocks of 5:00 with reps 4/3/2/1 and 1:00 rest between
+      [4,3,2,1].forEach((r, idx) => {
+        steps.push({name:`Builder 5:00 — ${r} reps per move`, seconds:300});
+        if(idx !== 3) steps.push({name:`Rust 1:00`, seconds:60});
+      });
+      return steps;
+    }
+
+    if(mode === "L2"){
+      const mins = parseInt(getVal("l2_minutes","3"),10);
+      const steps = [{
+        name:`${moduleLabel(module)} — ${mins}:00`,
+        seconds: mins*60
+      }];
+
+      // Flow Vault includes journaling per manual
+      if(module === "FLOWVAULT"){
+        steps.push({name:`Flow Vault — Journal 2:00`, seconds:120});
+      }
+
+      // Battle Steps manual explicitly requires able to transition to ground and back up.
+      // We keep that as a reminder step (no timer) if ground is enabled.
+      if(module === "BATTLE"){
+        steps.push({name:`Reminder: Must be able to transition to ground and back up.`, seconds:0});
+      }
+
+      return steps;
+    }
+
+    // DRILL
+    const d = movesOrDrill; // {name, kind}
+    if(d.kind === "FLOW"){
+      // Common homework flows use 2–5 min; we default to 5:00 (as written in two drills) but user can just run it.
+      return [{name:d.name, seconds:300}];
+    }
+    // 100 reps: no fixed time
+    return [{name:d.name, seconds:0}];
+  }
+
+  function moduleLabel(m){
+    if(m==="HEALING") return "Mace Mobility — Healing Flow";
+    if(m==="BATTLE") return "Battle Steps — Free Flow";
+    if(m==="SWORDS") return "Swords & Shields — Creative";
+    if(m==="KIMURA") return "Kimura & Shaolin — Move Arsenal";
+    if(m==="FLOWVAULT") return "Flow Vault";
+    if(m==="360HW") return "360 Creative Homework";
+    return m;
+  }
+
+  // ---------- Session build ----------
+  function buildSession(){
+    const mode = getVal("mode","L1");
+    const createdAt = nowStamp();
+
+    if(mode === "L1"){
+      const count = parseInt(getVal("l1_moves","5"),10);
+      const moves = pickL1(count);
+      return {
+        v:2,
+        createdAt,
+        mode,
+        module:null,
+        settings:{
+          altSides: getChecked("altSides", true),
+          includeGround: getChecked("includeGround", true),
+          beepOn: getChecked("beepOn", true),
+          l1Family: getVal("l1_family","MIX")
+        },
+        moves,
+        protocol: buildProtocol("L1", null, moves)
+      };
+    }
+
+    if(mode === "L2"){
+      const module = getVal("l2_module","HEALING");
+      const moves = pickL2(module);
+      return {
+        v:2,
+        createdAt,
+        mode,
+        module,
+        settings:{
+          altSides: getChecked("altSides", true),
+          includeGround: getChecked("includeGround", true),
+          beepOn: getChecked("beepOn", true),
+          l2Minutes: getVal("l2_minutes","3")
+        },
+        moves,
+        protocol: buildProtocol("L2", module, moves)
+      };
+    }
+
+    const drill = pickDrill();
+    return {
+      v:2,
+      createdAt,
+      mode:"DRILL",
+      module:null,
+      settings:{
+        beepOn: $("#beepOn").checked
+      },
+      drill,
+      moves: [],
+      protocol: buildProtocol("DRILL", null, drill)
+    };
+  }
+
+  // ---------- Persist ----------
+  function saveSession(sess){ localStorage.setItem(LS_KEY, JSON.stringify(sess)); }
+  function loadSession(){
+    try{ const raw = localStorage.getItem(LS_KEY); return raw ? JSON.parse(raw) : null; }
+    catch(e){ return null; }
+  }
+  function saveTimer(state){ localStorage.setItem(LS_TIMER, JSON.stringify(state)); }
+  function loadTimer(){
+    try{ const raw = localStorage.getItem(LS_TIMER); return raw ? JSON.parse(raw) : null; }
+    catch(e){ return null; }
+  }
+  function clearAll(){ localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_TIMER); }
+
+  // ---------- Render ----------
+  function renderSession(sess){
+    setText("sessionStamp", sess.createdAt || "—");
+    const mb = (sess.mode==="L1") ? "Level 1" : (sess.mode==="L2") ? "Level 2" : "Drill";
+    setText("modeBadge", mb);
+
+    const summary = [];
+    if(sess.mode==="L1"){
+      summary.push(`<span class="ok">Flow Builder</span> • ${sess.moves.length} moves • family: <strong>${sess.settings.l1Family}</strong>`);
+      summary.push(`• alternating sides: <strong>${sess.settings.altSides ? "aan" : "uit"}</strong>`);
+    } else if(sess.mode==="L2"){
+      summary.push(`<span class="ok">${moduleLabel(sess.module)}</span> • 5 move minimum (generator)`);
+      summary.push(`• timer: <strong>${sess.settings.l2Minutes}:00</strong>`);
+      summary.push(`• alternating sides: <strong>${sess.settings.altSides ? "aan" : "uit"}</strong>`);
+      summary.push(`• include ground: <strong>${sess.settings.includeGround ? "aan" : "uit"}</strong>`);
+    } else {
+      summary.push(`<span class="ok">Drill</span> • ${sess.drill.name}`);
+    }
+    setHTML("sessionSummary", summary.join(" "));
+
+    const list = getEl("movesList");
+    if(!list){ console.warn("[SMF] Missing #movesList; cannot render items."); return; }
+    list.innerHTML = "";
+
+    if(sess.mode==="DRILL"){
+      const el = document.createElement("div");
+      el.className = "item";
+      el.innerHTML = `
+        <div class="itemTop">
+          <div>
+            <div class="itemName">${sess.drill.name}</div>
+            <div class="meta">${sess.drill.kind === "FLOW" ? "Run as flow homework." : "No timer required; complete reps."}</div>
+          </div>
+        </div>
+      `;
+      list.appendChild(el);
+    } else {
+      sess.moves.forEach((m, idx) => {
+        const el = document.createElement("div");
+        el.className = "item";
+        el.innerHTML = `
+          <div class="itemTop">
+            <div>
+              <div class="itemName">${idx+1}. ${m.name} (${m.side})</div>
+              <div class="meta">Manual move name (verbatim)</div>
+            </div>
+          </div>
+        `;
+        list.appendChild(el);
+      });
+      if(sess.mode==="L2" && sess.module==="FLOWVAULT"){
+        const el = document.createElement("div");
+        el.className = "item";
+        el.innerHTML = `
+          <div class="itemTop">
+            <div>
+              <div class="itemName">Flow Vault Prompt</div>
+              <div class="meta">${FLOWVAULT_PROMPTS.join(" • ")}</div>
+            </div>
+          </div>
+        `;
+        list.appendChild(el);
+      }
+    }
+
+    applyTimerFromSession(sess);
+  }
+
+  // ---------- Timer engine ----------
+  let tick = null;
+  let currentSession = null;
+
+  const timerState = { running:false, stepIdx:0, remaining:0, stepTotal:0, sessionStamp:null };
+
+  function stopTick(){ if(tick){ clearInterval(tick); tick = null; } }
+  function pauseTimer(){
+    timerState.running = false;
+    saveTimer(timerState);
+    stopTick();
+  }
+  function setTimerUI(stepName, idx, total, remaining, stepSeconds){
+    $("#stepName").textContent = stepName || "—";
+    $("#stepIndex").textContent = String(idx);
+    $("#stepTotal").textContent = String(total);
+    $("#timeBig").textContent = mmss(Math.max(0, remaining|0));
+    const pct = (stepSeconds > 0) ? (100 * (1 - (remaining / stepSeconds))) : 0;
+    $("#bar").style.width = `${clamp(pct, 0, 100)}%`;
+    $("#timerHint").textContent = (stepSeconds === 0)
+      ? "Geen vaste timer voor deze stap. Gebruik Volgende om door te gaan."
+      : "Beep op 0:00. Gebruik Volgende om door te klikken.";
+  }
+
+  function applyTimerFromSession(sess){
+    const total = sess.protocol.length;
+    timerState.stepTotal = total;
+    timerState.sessionStamp = sess.createdAt;
+
+    const saved = loadTimer();
+    const canRestore = saved && saved.sessionStamp === sess.createdAt && saved.stepTotal === total;
+
+    if(canRestore){
+      timerState.running = false;
+      timerState.stepIdx = clamp(saved.stepIdx|0, 0, total-1);
+      timerState.remaining = Math.max(0, saved.remaining|0);
+      timerState.sessionStamp = sess.createdAt;
+    } else {
+      timerState.running = false;
+      timerState.stepIdx = 0;
+      timerState.remaining = sess.protocol[0]?.seconds ?? 0;
+      saveTimer(timerState);
+    }
+
+    const step = sess.protocol[timerState.stepIdx];
+    setTimerUI(step?.name, timerState.stepIdx+1, total, timerState.remaining, step?.seconds ?? 0);
+  }
+
+  function startTick(){
+    stopTick();
+    if(!currentSession) return;
+    const step = currentSession.protocol[timerState.stepIdx];
+    const stepSeconds = step?.seconds ?? 0;
+    if(stepSeconds === 0){
+      timerState.running = false;
+      saveTimer(timerState);
+      return;
+    }
+    timerState.running = true;
+    saveTimer(timerState);
+
+    tick = setInterval(() => {
+      if(!timerState.running) return;
+      timerState.remaining = Math.max(0, (timerState.remaining|0) - 1);
+      setTimerUI(step.name, timerState.stepIdx+1, timerState.stepTotal, timerState.remaining, stepSeconds);
+
+      if(timerState.remaining === 0){
+        beepTriple();
+        timerState.running = false;
+        saveTimer(timerState);
+        stopTick();
+      } else {
+        if(timerState.remaining === 10) beep(660, .05, .04);
+        if(timerState.remaining === 5) beep(880, .05, .05);
+        saveTimer(timerState);
+      }
+    }, 1000);
+  }
+
+  function resetTimer(){
+    if(!currentSession) return;
+    pauseTimer();
+    const step = currentSession.protocol[timerState.stepIdx];
+    timerState.remaining = step?.seconds ?? 0;
+    saveTimer(timerState);
+    setTimerUI(step?.name, timerState.stepIdx+1, timerState.stepTotal, timerState.remaining, step?.seconds ?? 0);
+  }
+
+  function nextStep(){
+    if(!currentSession) return;
+    pauseTimer();
+    timerState.stepIdx = clamp(timerState.stepIdx + 1, 0, timerState.stepTotal - 1);
+    const step = currentSession.protocol[timerState.stepIdx];
+    timerState.remaining = step?.seconds ?? 0;
+    saveTimer(timerState);
+    setTimerUI(step?.name, timerState.stepIdx+1, timerState.stepTotal, timerState.remaining, step?.seconds ?? 0);
+    beep(990, .05, .04);
+  }
+
+  // ---------- Buttons (delegated; robust for weird WebView timing) ----------
+  function onClickById(id, handler){
+    document.addEventListener("click", (e) => {
+      const t = e.target;
+      if(!t) return;
+      // If someone taps inside a button, climb up to the closest button
+      const el = (t.id ? t : t.closest ? t.closest("button") : null);
+      if(el && el.id === id) handler(e, el);
+    }, false);
+  }
+
+  onClickById("btnNew", () => {
+    const sess = buildSession();
+    currentSession = sess;
+    saveSession(sess);
+    localStorage.removeItem(LS_TIMER);
+    renderSession(sess);
+    beep(880,.06,.05);
+  });
+
+  onClickById("btnRepeat", () => {
+    const sess = loadSession();
+    if(sess){
+      currentSession = sess;
+      renderSession(sess);
+      beep(660,.06,.04);
+    } else {
+      const newSess = buildSession();
+      currentSession = newSess;
+      saveSession(newSess);
+      renderSession(newSess);
+      beep(660,.06,.04);
+    }
+  });
+
+  onClickById("btnClear", () => {
+    pauseTimer();
+    clearAll();
+    currentSession = null;
+    setText("sessionStamp","—");
+    setText("modeBadge","—");
+    setText("sessionSummary","—");
+    setHTML("movesList","");
+    setText("stepName","—");
+    setText("stepIndex","0");
+    setText("stepTotal","0");
+    setText("timeBig","00:00");
+    $("#bar").style.width = "0%";
+    setText("timerHint","Genereer een sessie en druk Start.");
+    beep(330,.08,.05);
+  });
+
+  onClickById("tStart", () => {
+    if(!currentSession){
+      const sess = loadSession();
+      if(sess){ currentSession = sess; renderSession(sess); }
+      else return;
+    }
+    // prime audio
+    beep(0,0,0);
+    startTick();
+  });
+
+  onClickById("tPause", () => pauseTimer());
+  onClickById("tNext", () => nextStep());
+  onClickById("tReset", () => resetTimer());
+
+  // Mode/select changes (delegated)
+  document.addEventListener("change", (e) => {
+    const t = e.target;
+    if(!t) return;
+    if(t.id === "mode"){
+      refreshControlVisibility();
+    }
+  });
+
+  // Control visibility
+  function refreshControlVisibility(){
+    const mode = getVal("mode","L1");
+    const l1 = (mode === "L1");
+    const l2 = (mode === "L2");
+    const drill = (mode === "DRILL");
+
+    const el_l1_moves = getEl("l1_moves"); if(el_l1_moves) el_l1_moves.disabled = !l1;
+    const el_l1_family = getEl("l1_family"); if(el_l1_family) el_l1_family.disabled = !l1;
+
+    const el_l2_module = getEl("l2_module"); if(el_l2_module) el_l2_module.disabled = !l2;
+    const el_l2_minutes = getEl("l2_minutes"); if(el_l2_minutes) el_l2_minutes.disabled = !l2;
+    const el_altSides = getEl("altSides"); if(el_altSides) el_altSides.disabled = drill; // drills are fixed tasks
+    const el_includeGround = getEl("includeGround"); if(el_includeGround) el_includeGround.disabled = !l2;
+  }
+  // NOTE: mode change listener is delegated above for WebView robustness
+  refreshControlVisibility();
+
+  // Boot restore
+  const restored = loadSession();
+  if(restored){
+    currentSession = restored;
+    renderSession(restored);
+  } else {
+    setText("sessionStamp","—");
+  }
+
+});
+</script>
+</body>
+</html>
