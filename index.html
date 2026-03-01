@@ -195,6 +195,10 @@
           <input id="altSides" type="checkbox" checked />
         </div>
         <div class="toggle" style="margin-top:10px;">
+          <span>Auto-insert Level 1 hand transitions (tussen moves)</span>
+          <input id="autoTransitions" type="checkbox" checked />
+        </div>
+        <div class="toggle" style="margin-top:10px;">
           <span>Include ground moves (L2 modules waar van toepassing)</span>
           <input id="includeGround" type="checkbox" checked />
         </div>
@@ -1202,19 +1206,42 @@ function setHTML(id, html){
     });
   }
 
-  function pickL1(count){
-    const fam = getVal("l1_family","MIX");
-    let pool = L1_MOVES.filter(m => m.family !== "TRANSITIONS"); // transitions are implicit; user can still include via MIX if desired later
-    if(fam !== "MIX"){
-      pool = pool.filter(m => m.family === fam);
+function pickTransition(){
+  // Only manual-defined Level 1 hand transitions
+  const transPool = L1_MOVES.filter(m => m.family === "TRANSITIONS").map(x => x.name);
+  if(!transPool.length) return "Transition";
+  return shuffle(transPool)[0];
+}
+
+function interleaveTransitions(moves){
+  // moves: [{name, side}] (base moves, no transitions)
+  // returns: [{name, side, kind}] including inserted transitions between moves
+  const auto = getChecked("autoTransitions", true);
+  const out = [];
+  for(let i=0;i<moves.length;i++){
+    out.push({...moves[i], kind:"MOVE"});
+    if(auto && i < moves.length-1){
+      // Transition uses same side as the move it follows (keeps R/L rhythm)
+      out.push({name: pickTransition(), side: moves[i].side, kind:"TRANSITION"});
     }
-    // If user chose MIX, allow everything incl transitions
-    if(fam === "MIX"){
-      pool = L1_MOVES.slice();
-    }
-    const picks = shuffle(pool).slice(0, Math.min(count, pool.length)).map(x => x.name);
-    return normalizeSides(picks);
   }
+  return out;
+}
+
+  function pickL1(count){
+  const fam = getVal("l1_family","MIX");
+  // Base pool: never auto-pick transitions as "moves" (we insert them separately when enabled)
+  let pool = L1_MOVES.filter(m => m.family !== "TRANSITIONS");
+  if(fam !== "MIX"){
+    pool = pool.filter(m => m.family === fam);
+  } else {
+    // MIX = all non-transition Level 1 items
+    pool = L1_MOVES.filter(m => m.family !== "TRANSITIONS");
+  }
+  const picks = shuffle(pool).slice(0, Math.min(count, pool.length)).map(x => x.name);
+  const base = normalizeSides(picks); // [{name, side}]
+  return interleaveTransitions(base);
+}
 
   function pickL2(module){
     const includeGround = getChecked("includeGround", true);
@@ -1274,20 +1301,32 @@ function setHTML(id, html){
   // ---------- Protocols ----------
   function buildProtocol(mode, module, movesOrDrill){
     if(mode === "L1"){
-      const moves = movesOrDrill; // [{name, side}]
-      const steps = [];
-      // 2:00 AMRAP per move
-      moves.forEach(m => steps.push({
+  const moves = movesOrDrill; // [{name, side, kind}]
+  const steps = [];
+
+  // 2:00 AMRAP per base move (and show the inserted transition as a 0-sec cue)
+  moves.forEach(m => {
+    if(m.kind === "MOVE"){
+      steps.push({
         name:`AMRAP 2:00 — ${m.name} (${m.side})`,
         seconds:120
-      }));
-      // Builder ladder: 4 blocks of 5:00 with reps 4/3/2/1 and 1:00 rest between
-      [4,3,2,1].forEach((r, idx) => {
-        steps.push({name:`Builder 5:00 — ${r} reps per move`, seconds:300});
-        if(idx !== 3) steps.push({name:`Rust 1:00`, seconds:60});
       });
-      return steps;
+    } else {
+      // transition cue (no timer; click Next)
+      steps.push({
+        name:`Transition — ${m.name} (${m.side})`,
+        seconds:0
+      });
     }
+  });
+
+  // Builder ladder: 4 blocks of 5:00 with reps 4/3/2/1 and 1:00 rest between
+  [4,3,2,1].forEach((r, idx) => {
+    steps.push({name:`Builder 5:00 — ${r} reps per MOVE + transition`, seconds:300});
+    if(idx !== 3) steps.push({name:`Rust 1:00`, seconds:60});
+  });
+  return steps;
+}
 
     if(mode === "L2"){
       const mins = parseInt(getVal("l2_minutes","3"),10);
@@ -1347,7 +1386,8 @@ function setHTML(id, html){
           altSides: getChecked("altSides", true),
           includeGround: getChecked("includeGround", true),
           beepOn: getChecked("beepOn", true),
-          l1Family: getVal("l1_family","MIX")
+          l1Family: getVal("l1_family","MIX"),
+          autoTransitions: getChecked("autoTransitions", true)
         },
         moves,
         protocol: buildProtocol("L1", null, moves)
@@ -1409,7 +1449,14 @@ function setHTML(id, html){
 
     const summary = [];
     if(sess.mode==="L1"){
-      summary.push(`<span class="ok">Flow Builder</span> • ${sess.moves.length} moves • family: <strong>${sess.settings.l1Family}</strong>`);
+      const baseCount = sess.moves.filter(x=>x.kind==="MOVE").length;
+      const transCount = sess.moves.filter(x=>x.kind==="TRANSITION").length;
+      let line = '<span class="ok">Flow Builder</span> • ' + baseCount + ' moves';
+      if(transCount > 0){
+        line += ' + ' + transCount + ' transitions';
+      }
+      line += ' • family: <strong>' + sess.settings.l1Family + '</strong>';
+      summary.push(line);
       summary.push(`• alternating sides: <strong>${sess.settings.altSides ? "aan" : "uit"}</strong>`);
     } else if(sess.mode==="L2"){
       summary.push(`<span class="ok">${moduleLabel(sess.module)}</span> • 5 move minimum (generator)`);
@@ -1439,18 +1486,19 @@ function setHTML(id, html){
       list.appendChild(el);
     } else {
       sess.moves.forEach((m, idx) => {
-        const el = document.createElement("div");
-        el.className = "item";
-        el.innerHTML = `
-          <div class="itemTop">
-            <div>
-              <div class="itemName">${idx+1}. ${m.name} (${m.side})</div>
-              <div class="meta">Manual move name (verbatim)</div>
-            </div>
-          </div>
-        `;
-        list.appendChild(el);
-      });
+  const el = document.createElement("div");
+  el.className = "item";
+  const isT = (m.kind === "TRANSITION");
+  el.innerHTML = `
+    <div class="itemTop">
+      <div>
+        <div class="itemName">${idx+1}. ${isT ? "↳ " : ""}${m.name} (${m.side})</div>
+        <div class="meta">${isT ? "Manual hand transition (auto-inserted)" : "Manual move name (verbatim)"}</div>
+      </div>
+    </div>
+  `;
+  list.appendChild(el);
+});
       if(sess.mode==="L2" && sess.module==="FLOWVAULT"){
         const el = document.createElement("div");
         el.className = "item";
@@ -1653,6 +1701,7 @@ function setHTML(id, html){
 
     const el_l1_moves = getEl("l1_moves"); if(el_l1_moves) el_l1_moves.disabled = !l1;
     const el_l1_family = getEl("l1_family"); if(el_l1_family) el_l1_family.disabled = !l1;
+    const el_autoT = getEl("autoTransitions"); if(el_autoT) el_autoT.disabled = !l1;
 
     const el_l2_module = getEl("l2_module"); if(el_l2_module) el_l2_module.disabled = !l2;
     const el_l2_minutes = getEl("l2_minutes"); if(el_l2_minutes) el_l2_minutes.disabled = !l2;
